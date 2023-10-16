@@ -75,6 +75,11 @@ def test_one_epoch(args, net, test_loader):
     total_acc3d = 0
     total_acc3d_2 = 0
     num_examples = 0
+
+    if(args.save_flow):
+        if not os.path.exists(os.path.join('checkpoints',args.exp_name,'out')):
+            os.makedirs(os.path.join('checkpoints',args.exp_name,'out'))
+
     for i, data in tqdm(enumerate(test_loader), total = len(test_loader)):
         pc1, pc2, color1, color2, flow, mask1 = data
         pc1 = pc1.cuda().transpose(2,1).contiguous()
@@ -93,10 +98,15 @@ def test_one_epoch(args, net, test_loader):
         total_acc3d += acc_3d * batch_size
         total_acc3d_2+=acc_3d_2*batch_size
         # print('batch EPE 3D: %f\tACC 3D: %f\tACC 3D 2: %f' % (epe_3d, acc_3d, acc_3d_2))
+        
+        #Saving Flow
+        if(args.save_flow):
+            np.savez_compressed(os.path.join('checkpoints',args.exp_name,f'out/flow_out_{i}.npz'),
+            pred=flow_pred.detach().cpu().numpy(),pc1=pc1.detach().cpu().numpy(),pc2=pc2.detach().cpu().numpy(),
+            color1=color1.detach().cpu().numpy(),color2=color2.detach().cpu().numpy(),flow=flow.detach().cpu().numpy(),
+            mask1=mask1.detach().cpu().numpy())
 
         total_loss += loss.item() * batch_size
-        
-
     return total_loss * 1.0 / num_examples, total_epe * 1.0 / num_examples, total_acc3d * 1.0 / num_examples, total_acc3d_2 * 1.0 / num_examples
 
 
@@ -184,7 +194,7 @@ def main():
                         help='Point Number [default: 2048]')
     parser.add_argument('--dropout', type=float, default=0.5, metavar='N',
                         help='Dropout ratio in transformer')
-    parser.add_argument('--batch_size', type=int, default=16, metavar='batch_size',
+    parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--test_batch_size', type=int, default=32, metavar='batch_size',
                         help='Size of batch)')
@@ -213,6 +223,7 @@ def main():
                         help='dataset to use')
     parser.add_argument('--dataset_path', type=str, default='dataset/data_processed_maxcut_35_20k_2k_8192', metavar='N',
                         help='dataset to use')
+    parser.add_argument('--save_flow', action='store_true', default=False, help='Whether to save flow')
     parser.add_argument('--model_path', type=str, default='pretrained_model/model.best.t7', metavar='N',
                         help='Pretrained model path')
 
