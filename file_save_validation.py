@@ -2,7 +2,24 @@ import argparse
 import os
 import numpy as np
 from tqdm import tqdm 
-from main import scene_flow_EPE_np
+
+def scene_flow_EPE_np(pred, labels, mask):
+    error = np.sqrt(np.sum((pred - labels)**2, 2) + 1e-20)
+
+    gtflow_len = np.sqrt(np.sum(labels*labels, 2) + 1e-20) # B,N
+    acc1 = np.sum(np.logical_or((error <= 0.05)*mask, (error/gtflow_len <= 0.05)*mask), axis=1)
+    acc2 = np.sum(np.logical_or((error <= 0.1)*mask, (error/gtflow_len <= 0.1)*mask), axis=1)
+
+    mask_sum = np.sum(mask, 1)
+    acc1 = acc1[mask_sum > 0] / mask_sum[mask_sum > 0]
+    acc1 = np.mean(acc1)
+    acc2 = acc2[mask_sum > 0] / mask_sum[mask_sum > 0]
+    acc2 = np.mean(acc2)
+
+    EPE = np.sum(error * mask, 1)[mask_sum > 0] / mask_sum[mask_sum > 0]
+    EPE = np.mean(EPE)
+    return EPE, acc1, acc2
+
 def get_loss(exp_path : str):
     total_loss = 0
     total_epe = 0
